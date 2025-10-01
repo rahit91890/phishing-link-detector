@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phishing Link Detector</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 600;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .result {
+            margin-top: 25px;
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result.safe {
+            background: #d4edda;
+            border: 2px solid #28a745;
+            color: #155724;
+        }
+
+        .result.suspicious {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            color: #856404;
+        }
+
+        .result.dangerous {
+            background: #f8d7da;
+            border: 2px solid #dc3545;
+            color: #721c24;
+        }
+
+        .result h3 {
+            margin-bottom: 10px;
+            font-size: 20px;
+        }
+
+        .result p {
+            margin-bottom: 8px;
+            line-height: 1.6;
+        }
+
+        .warning-list {
+            margin-top: 10px;
+            padding-left: 20px;
+        }
+
+        .warning-list li {
+            margin-bottom: 5px;
+        }
+
+        .icon {
+            font-size: 40px;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛡️ Phishing Link Detector</h1>
+        <p class="subtitle">Enter a URL to check if it's safe or potentially dangerous</p>
+        
+        <div class="input-group">
+            <label for="urlInput">URL to Check:</label>
+            <input type="text" id="urlInput" placeholder="https://example.com" />
+        </div>
+        
+        <button onclick="checkURL()">Analyze URL</button>
+        
+        <div id="result" class="result"></div>
+    </div>
+
+    <script>
+        function checkURL() {
+            const urlInput = document.getElementById('urlInput').value.trim();
+            const resultDiv = document.getElementById('result');
+            
+            if (!urlInput) {
+                alert('Please enter a URL');
+                return;
+            }
+            
+            let url;
+            try {
+                // Add protocol if missing
+                const urlToCheck = urlInput.startsWith('http') ? urlInput : 'http://' + urlInput;
+                url = new URL(urlToCheck);
+            } catch (e) {
+                resultDiv.className = 'result dangerous';
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = `
+                    <div class="icon">❌</div>
+                    <h3>Invalid URL</h3>
+                    <p>The URL format is invalid. Please check and try again.</p>
+                `;
+                return;
+            }
+            
+            const warnings = [];
+            let riskLevel = 'safe';
+            let riskScore = 0;
+            
+            // Check for suspicious patterns
+            const domain = url.hostname.toLowerCase();
+            const fullUrl = url.href.toLowerCase();
+            
+            // 1. Check for IP address instead of domain
+            if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(domain)) {
+                warnings.push('Uses IP address instead of domain name');
+                riskScore += 3;
+            }
+            
+            // 2. Check for suspicious TLDs
+            const suspiciousTLDs = ['.tk', '.ml', '.ga', '.cf', '.gq', '.xyz', '.top'];
+            if (suspiciousTLDs.some(tld => domain.endsWith(tld))) {
+                warnings.push('Uses a suspicious top-level domain');
+                riskScore += 2;
+            }
+            
+            // 3. Check for excessive subdomains
+            const subdomains = domain.split('.');
+            if (subdomains.length > 4) {
+                warnings.push('Contains excessive subdomains');
+                riskScore += 2;
+            }
+            
+            // 4. Check for @ symbol (can be used to obscure destination)
+            if (fullUrl.includes('@')) {
+                warnings.push('Contains @ symbol (potential redirect trick)');
+                riskScore += 3;
+            }
+            
+            // 5. Check for suspicious keywords
+            const suspiciousKeywords = ['verify', 'account', 'login', 'secure', 'bank', 'paypal', 'suspended', 'urgent', 'confirm'];
+            const foundKeywords = suspiciousKeywords.filter(keyword => fullUrl.includes(keyword));
+            if (foundKeywords.length > 0) {
+                warnings.push(`Contains suspicious keywords: ${foundKeywords.join(', ')}`);
+                riskScore += foundKeywords.length;
+            }
+            
+            // 6. Check for URL shorteners
+            const shorteners = ['bit.ly', 'tinyurl.com', 'goo.gl', 't.co', 'ow.ly'];
+            if (shorteners.some(shortener => domain.includes(shortener))) {
+                warnings.push('Uses URL shortener (destination hidden)');
+                riskScore += 1;
+            }
+            
+            // 7. Check for excessive dashes
+            if ((domain.match(/-/g) || []).length > 3) {
+                warnings.push('Contains excessive dashes in domain');
+                riskScore += 1;
+            }
+            
+            // 8. Check for numbers in domain
+            if (/\d/.test(domain) && !/^www\d+\./.test(domain)) {
+                warnings.push('Contains numbers in domain name');
+                riskScore += 1;
+            }
+            
+            // 9. Check for HTTPS
+            if (url.protocol === 'http:') {
+                warnings.push('Not using secure HTTPS protocol');
+                riskScore += 1;
+            }
+            
+            // 10. Check for homograph attacks (mixed character sets)
+            if (/[а-яА-Я]/.test(domain) || /[α-ωΑ-Ω]/.test(domain)) {
+                warnings.push('Contains non-Latin characters (possible homograph attack)');
+                riskScore += 3;
+            }
+            
+            // Determine risk level
+            if (riskScore >= 6) {
+                riskLevel = 'dangerous';
+            } else if (riskScore >= 3) {
+                riskLevel = 'suspicious';
+            }
+            
+            // Display results
+            resultDiv.className = `result ${riskLevel}`;
+            resultDiv.style.display = 'block';
+            
+            let icon = '✅';
+            let title = 'URL Appears Safe';
+            let message = 'No major security concerns detected. However, always be cautious when clicking unknown links.';
+            
+            if (riskLevel === 'suspicious') {
+                icon = '⚠️';
+                title = 'Suspicious URL';
+                message = 'This URL shows some warning signs. Proceed with caution.';
+            } else if (riskLevel === 'dangerous') {
+                icon = '🚨';
+                title = 'Potentially Dangerous URL';
+                message = 'This URL shows multiple red flags. Do NOT visit this site or enter any personal information.';
+            }
+            
+            let warningHTML = '';
+            if (warnings.length > 0) {
+                warningHTML = '<ul class="warning-list">';
+                warnings.forEach(warning => {
+                    warningHTML += `<li>${warning}</li>`;
+                });
+                warningHTML += '</ul>';
+            }
+            
+            resultDiv.innerHTML = `
+                <div class="icon">${icon}</div>
+                <h3>${title}</h3>
+                <p>${message}</p>
+                <p><strong>Risk Score:</strong> ${riskScore}/15</p>
+                ${warningHTML}
+            `;
+        }
+        
+        // Allow Enter key to submit
+        document.getElementById('urlInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                checkURL();
+            }
+        });
+    </script>
+</body>
+</html>
